@@ -1,0 +1,10 @@
+# Scratch exports produced while testing the script
+*.tsv
+*.json
+!package.json
+
+# Editor / OS
+.vscode/
+.idea/
+desktop.ini
+Thumbs.db

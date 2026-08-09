@@ -1,99 +1,163 @@
-# cfa-quiz-to-anki
+<h1 align="center">cfa-quiz-to-anki</h1>
 
-Tampermonkey userscript that scrapes a CFA Institute practice-quiz **Review**
-page and emits Anki-ready TSV.
+<p align="center">
+  Turn a CFA Institute practice-quiz <strong>Review</strong> page into Anki-ready TSV — in two clicks.
+</p>
 
-The quiz runs inside an LTI iframe (`insproserv.net`) embedded in Canvas
-(`learn.cfainstitute.org`), so the script matches both origins.
+<p align="center">
+  <a href="https://raw.githubusercontent.com/smrik/cfa-quiz-to-anki/main/cfa-quiz-to-anki.user.js"><img alt="Install" src="https://img.shields.io/badge/install-userscript-3b82f6?style=flat-square"></a>
+  <img alt="Tampermonkey" src="https://img.shields.io/badge/Tampermonkey-required-00485B?style=flat-square">
+  <img alt="Auto-update" src="https://img.shields.io/badge/auto--update-enabled-16a05d?style=flat-square">
+  <img alt="License" src="https://img.shields.io/badge/license-MIT-777?style=flat-square">
+</p>
+
+<p align="center">
+  <img src="docs/pipeline.svg" alt="Pipeline: quiz review page, userscript panel, TSV, Anki card" width="100%">
+</p>
+
+Reviewing a CFA practice quiz tells you which questions you got wrong, then
+throws that away. This pulls each one — question, all three options, the
+correct letter, the official explanation, and which answer *you* picked — and
+hands you a TSV you can import straight into Anki.
+
+By default it exports **only the questions you got wrong**. On the first real
+run that was 11 of 21.
 
 ## Install
 
-Open the raw file with Tampermonkey installed and it offers to install:
+1. Install [Tampermonkey](https://www.tampermonkey.net/)
+2. Open **[cfa-quiz-to-anki.user.js](https://raw.githubusercontent.com/smrik/cfa-quiz-to-anki/main/cfa-quiz-to-anki.user.js)** — Tampermonkey offers to install it
+3. Import the note type (see [Anki setup](#anki-setup))
 
-<https://raw.githubusercontent.com/smrik/cfa-quiz-to-anki/main/cfa-quiz-to-anki.user.js>
+Updates are automatic: `@updateURL` points back at this repo, so a
+version-bumped push reaches your browser on Tampermonkey's next check.
 
-`@updateURL` and `@downloadURL` point back at that raw URL, so pushing a
-**version-bumped** commit to `main` updates the installed copy.
+## Use
 
-## Editing workflow
-
-```powershell
-# edit cfa-quiz-to-anki.user.js, then:
-./bump.ps1                       # 1.3.0 -> 1.3.1, syntax-check, commit, push
-./bump.ps1 -Part minor           # 1.3.1 -> 1.4.0
-./bump.ps1 -Message "fix maths"  # custom commit message
-```
-
-Three things that bite:
-
-- **The version must increase.** Tampermonkey compares `@version`; pushing new
-  code under the same number is a silent no-op. `bump.ps1` exists so this
-  cannot be forgotten.
-- **Updates are not instant.** Tampermonkey checks on its own schedule (daily
-  by default). To force one: Tampermonkey dashboard → *Installed userscripts* →
-  the ⟳ icon, or *Utilities → Check for userscript updates*.
-- **`raw.githubusercontent.com` caches for ~5 minutes.** A push is not visible
-  at the raw URL immediately.
-
-The repo must be **public** — Tampermonkey fetches the raw URL unauthenticated.
-
-## Using it
-
-1. Finish a quiz, open its **Review** page
+1. Finish a quiz and open its **Review** page
 2. A panel appears bottom-right
-3. Set **Topic** (e.g. `Quantitative Methods - Module 7`) — it is remembered
-4. **Copy TSV — mistakes only** (recommended) or **all**
-5. Anki → File → Import
+3. Set **Topic** — e.g. `Quantitative Methods - Module 7`. It is remembered between runs and fills the `Topic` field.
+4. **Copy TSV — mistakes only** *(recommended)* or **all**
+5. In Anki: **File → Import**
 
-Import settings:
+### Anki setup
+
+Import settings that matter:
 
 | Setting | Value |
 |---|---|
-| Field separator | Tab |
+| Field separator | **Tab** |
 | Note type | `smrik - CFA MCQ` |
-| First row is field names | **No** — there is no header row |
-| Allow HTML in fields | Yes |
+| First row is field names | **No** — the file has no header row |
+| Allow HTML in fields | **Yes** |
 
-## Column order — the one thing to keep in sync
+The note type renders an answerable card: click an option on the front, and the
+back marks it green if you were right, red if not, and always highlights the
+correct one. The explanation and a `Topic — Question N of M` source line sit
+below.
 
-Anki imports by column **position**. A header row does not reorder anything,
-which is why the file has none. `FIELDS` in the script must match the note
-type's field order exactly:
+> [!IMPORTANT]
+> **Anki imports by column *position*.** A header row does not reorder anything
+> — which is why this file has none. `FIELDS` in the script must match the note
+> type's field order exactly:
+>
+> ```
+> Question, OptionA, OptionB, OptionC, CorrectAnswer, Explanation, Topic, Source
+> ```
+>
+> `Topic` is **seventh**, not first. Get it wrong and every field shifts by one:
+> the question renders as option A and nothing makes sense. If you ever reorder
+> the note type's fields (*Tools → Manage Note Types → Fields*), update
+> `FIELDS` to match.
 
-```
-Question, OptionA, OptionB, OptionC, CorrectAnswer, Explanation, Topic, Source
-```
+## Panel
 
-Note that `Topic` is **seventh**. Getting this wrong shifts every field by one
-and the question renders as option A. If the note type's fields are ever
-reordered (Anki → Tools → Manage Note Types → Fields), update `FIELDS` to match.
+| Button | Does |
+|---|---|
+| **Copy TSV — mistakes only** | clipboard, wrong answers only |
+| **Copy TSV — all** | clipboard, every question |
+| **Download .tsv** | saves a file instead |
+| **Debug: copy parsed JSON** | full parse plus a `warnings` array — start here when something looks off |
+
+`warnings` reports any question that came back missing a field, so a silent
+mis-parse shows up as data rather than as a wrong flashcard three weeks later.
 
 ## How the scraping works
 
-Anchors are semantic or Canvas-stable. The emotion classnames
+The quiz runs inside an LTI iframe (`insproserv.net`) embedded in Canvas
+(`learn.cfainstitute.org`), so the script matches both origins — userscripts
+run inside frames by default.
+
+Every anchor is semantic or Canvas-stable. The emotion classnames
 (`css-1q7flqv`, …) are content hashes that change on every deploy, so nothing
-depends on them.
+here depends on them.
 
 | Anchor | Carries |
 |---|---|
 | `[data-quiz-question-id]` | one per question |
-| `.user_content` | actual prose — question, options, explanation |
+| `.user_content` | actual prose — question, each option, explanation |
 | `[class*="screenReaderContent"]` | `Correct answer:` / `Not Selected` |
 | `h3` "Feedback" | the explanation block (layout A) |
 | `N / N point` | whether it was answered correctly |
 
-Three traps the code works around, all found on real pages:
+### Three traps, all found on real pages
 
-1. **Two feedback layouts.** Questions 1–5 use one `<h3>Feedback</h3>` block;
-   6+ put `Correct Answer Feedback:` inline under each option. Layout A nests
-   feedback inside the option wrapper, layout B in a sibling one level up — so
-   the code walks **document order** rather than the tree, since reading order
-   is identical in both.
-2. **MathJax renders to SVG**, so `textContent` yields nothing. The source
-   MathML survives in `data-mathml` and is converted to readable text
-   (`√( )`, `(a)/(b)`, superscripts).
-3. **Question numbers restart** per section (1–5, then 1–16), so `aria-label`
-   is not unique. The running index is used instead.
+**1. Two different feedback layouts.** Questions 1–5 use a single
+`<h3>Feedback</h3>` block; question 6 onward puts `Correct Answer Feedback:`
+inline under every option. Worse, layout A nests per-option feedback *inside*
+the option wrapper while layout B puts it in a sibling one level up — so a
+depth-based walk cannot handle both. Reading order is identical in both, so the
+code walks **document order** instead.
 
-Full notes, including the Obsidian-side vault integration, live in
-`System/CFA Quiz Extractor.md` in the vault.
+**2. MathJax renders to SVG**, so `textContent` returns nothing for any
+formula. The source MathML survives in `data-mathml` and is converted to
+readable text — `√( )`, `(a)/(b)`, superscripts — giving
+`σ=√(2.45)=1.565` rather than a blank.
+
+**3. Question numbers restart per section** (1–5, then 1–16), so
+`aria-label="Question N Review"` is not unique across the page. The running
+index is used for anything that must be; the page's own number is kept as
+`pageNumber`.
+
+## Development
+
+```powershell
+# edit cfa-quiz-to-anki.user.js, then:
+./bump.ps1                       # 1.3.0 -> 1.3.1: syntax-check, commit, push
+./bump.ps1 -Part minor           # -> 1.4.0
+./bump.ps1 -Message "fix maths"  # custom commit message
+./bump.ps1 -NoPush               # commit only
+```
+
+`bump.ps1` runs a Node syntax check **before** committing. A broken script
+pushed to `main` would otherwise propagate silently to the browser on the next
+auto-update.
+
+Three things that bite:
+
+- **The version must increase.** Tampermonkey compares `@version`; pushing new
+  code under the same number is a silent no-op. That is what `bump.ps1` is for.
+- **Updates are not instant.** Tampermonkey checks on its own schedule, daily by
+  default. Force one from its dashboard → *Installed userscripts* → ⟳, or
+  *Utilities → Check for userscript updates*.
+- **`raw.githubusercontent.com` caches for ~5 minutes**, so a push is not
+  visible at the raw URL straight away.
+
+The repo has to stay **public** — Tampermonkey fetches the raw URL
+unauthenticated.
+
+## Screenshots
+
+Not included yet. To add: drop PNGs in `docs/` and reference them here —
+
+```markdown
+![Panel on the review page](docs/panel.png)
+![Imported card in Anki](docs/anki-card.png)
+```
+
+Worth capturing: the panel over a Review page, and one imported card
+front-and-back.
+
+## License
+
+MIT

@@ -1,7 +1,7 @@
 <h1 align="center">cfa-quiz-to-anki</h1>
 
 <p align="center">
-  Turn a CFA Institute practice-quiz <strong>Review</strong> page into Anki-ready TSV — in two clicks.
+  Highlight CFA Institute practice-quiz questions as you go, then turn the <strong>Review</strong> page into Anki cards or an Obsidian note.
 </p>
 
 <p align="center">
@@ -35,12 +35,58 @@ version-bumped push reaches your browser on Tampermonkey's next check.
 
 ## Use
 
-1. Finish a quiz and open its **Review** page
-2. A panel appears bottom-right
-3. **Copy TSV — mistakes only** *(recommended)* or **all**
-4. Confirm the **Topic** — it is pre-filled from the page, e.g.
-   `Quantitative Methods - Module 7: Estimation and Inference`, and fills the `Topic` field.
-5. In Anki: **File → Import**
+1. *(optional)* While taking the quiz, [highlight](#highlighting) what matters
+2. Finish the quiz and open its **Review** page — a panel appears bottom-right
+3. Pick what to export: **Mistakes only** *(default)*, **All questions** or **Highlighted only**
+4. **Anki: copy TSV** or **Obsidian: copy Markdown** (or the download buttons)
+5. Confirm the **Topic** — it is pre-filled from the page, e.g.
+   `Quantitative Methods - Module 7: Estimation and Inference`
+6. In Anki: **File → Import**. In Obsidian: paste into a note, or drop the `.md` in your vault.
+
+## Highlighting
+
+Select text in a question — the stem, an option, the vignette, or the
+explanation — and a small bar appears with three colours and a remove button.
+
+| Keys | Does |
+|---|---|
+| **Alt+1 / Alt+2 / Alt+3** | highlight the selection yellow / green / pink |
+| **Alt+0** | remove highlighting from the selection |
+
+- **Saved as you go.** Each highlight is stored the moment you make it, so an
+  unfinished quiz loses nothing. Come back tomorrow and it is still there.
+- **Follows the question.** A highlight made while taking the quiz is drawn
+  again on the Review page, where you can add more in the explanation.
+- **Travels with the export.** Anki fields carry `<mark>`; Markdown uses
+  `==text==` for yellow and `<mark>` for the other colours.
+- **Backup.** Tampermonkey menu → *Export highlights backup (JSON)* /
+  *Import highlights backup*. Storage lives in Tampermonkey, per browser.
+
+### How a highlight finds its question again
+
+A record is keyed by the page's `data-quiz-question-id` **and** a fingerprint
+of the question's own text (first stem paragraph + its options), e.g.
+`hl:q:53136:grbh8kpoqyil`. Two questions share a record only if both match, so
+a reused id cannot leak highlights onto a different question; and if the same
+question ever shows up under another id, the fingerprint alone still finds it.
+A vignette has no id, so its own text is its key — one record serves every
+question in the set.
+
+Inside a record each mark is the quoted text plus *which occurrence* of it
+within its section (`s0` stem, `o:B` option B, `f:B` that option's feedback,
+`F0` the shared feedback box). Positions are never stored, so a mark survives
+the page being redrawn. Marks are painted with the CSS Custom Highlight API,
+which does not touch the page's DOM. Formulas cannot be highlighted.
+
+### Obsidian note
+
+One note per export: YAML front matter (`topic`, `score`, `exported`), then
+each question as a heading with its options, and the explanation in a
+**folded** callout so the note doubles as a self-test. A vignette is printed
+once, above the first question of its set. Tables become Markdown tables
+(merged cells stay HTML), formulas become `$...$`, and every question ends
+with a block id (`^q53136`) you can link to. Unlike the Anki export, this one
+includes non-multiple-choice questions.
 
 The panel only appears on a Review page. While you are taking a quiz it stays
 out of the way.
@@ -92,9 +138,11 @@ below.
 
 | Button | Does |
 |---|---|
-| **Copy TSV — mistakes only** | clipboard, wrong answers only |
-| **Copy TSV — all** | clipboard, every question |
-| **Download .tsv** | saves a file instead |
+| scope menu | **Mistakes only** / **All questions** / **Highlighted only** — applies to every export button |
+| **Anki: copy TSV** | clipboard |
+| **Anki: download .tsv** | saves a file instead |
+| **Obsidian: copy Markdown** | clipboard |
+| **Obsidian: download .md** | saves a file instead |
 | **Debug: copy parsed JSON** | full parse plus a `warnings` array — start here when something looks off |
 
 `warnings` reports any question that came back missing a field, so a silent
@@ -186,8 +234,8 @@ HTML (tables with inline borders, so the card template needs no CSS).
 
 ```powershell
 # edit cfa-quiz-to-anki.user.js, then:
-./bump.ps1                       # 2.0.0 -> 2.0.1: syntax-check, commit, push
-./bump.ps1 -Part minor           # -> 2.1.0
+./bump.ps1                       # 2.1.0 -> 2.1.1: syntax-check, commit, push
+./bump.ps1 -Part minor           # -> 2.2.0
 ./bump.ps1 -Message "fix maths"  # custom commit message
 ./bump.ps1 -NoPush               # commit only
 ./bump.ps1 -File cfa-quiz-readable.user.js   # bump the readable-text script instead

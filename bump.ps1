@@ -11,19 +11,22 @@
     ./bump.ps1                      # 1.3.0 -> 1.3.1, commit "cfa-quiz-to-anki 1.3.1"
     ./bump.ps1 -Part minor          # 1.3.1 -> 1.4.0
     ./bump.ps1 -Message "fix maths" # custom commit message
+    ./bump.ps1 -File cfa-quiz-readable.user.js   # bump the other script
 #>
 [CmdletBinding()]
 param(
     [ValidateSet('major', 'minor', 'patch')]
     [string]$Part = 'patch',
     [string]$Message,
+    [string]$File = 'cfa-quiz-to-anki.user.js',
     [switch]$NoPush
 )
 
 $ErrorActionPreference = 'Stop'
 Set-Location $PSScriptRoot
 
-$file = Join-Path $PSScriptRoot 'cfa-quiz-to-anki.user.js'
+$file = Join-Path $PSScriptRoot $File
+$name = (Split-Path $file -Leaf) -replace '\.user\.js$', ''
 $text = Get-Content $file -Raw
 
 if ($text -notmatch '(?m)^// @version\s+(\d+)\.(\d+)\.(\d+)\s*$') {
@@ -50,7 +53,7 @@ if (Get-Command node -ErrorAction SilentlyContinue) {
 $text = $text -replace '(?m)^// @version\s+\d+\.\d+\.\d+\s*$', "// @version      $new"
 Set-Content -Path $file -Value $text -NoNewline
 
-if (-not $Message) { $Message = "cfa-quiz-to-anki $new" }
+if (-not $Message) { $Message = "$name $new" }
 
 git add -A
 git commit -m $Message | Out-Null

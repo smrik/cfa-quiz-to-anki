@@ -82,6 +82,27 @@ below.
 `warnings` reports any question that came back missing a field, so a silent
 mis-parse shows up as data rather than as a wrong flashcard three weeks later.
 
+## Companion: readable quiz text
+
+`cfa-quiz-readable.user.js` is a second, independent userscript for *taking*
+the quiz rather than reviewing it. The practice tool sets question text at
+roughly 1.15 line height and lets it run ~125 characters wide on a large
+monitor. The script loosens the line height to 1.6, caps the line length at
+80ch (tables and images keep full width) and adds a gap between paragraphs.
+
+Install: open **[cfa-quiz-readable.user.js](https://raw.githubusercontent.com/smrik/cfa-quiz-to-anki/main/cfa-quiz-readable.user.js)**.
+
+Click inside the question first so the quiz frame has keyboard focus, then:
+
+| Keys | Does |
+|---|---|
+| **Alt+Shift+Up / Down** | line height ±0.05 |
+| **Alt+Shift+W** | cycle line length: 80ch, 95ch, 65ch, off |
+| **Alt+Shift+R** | toggle on/off |
+
+The same actions, plus *Reset to defaults*, are in the Tampermonkey menu.
+Settings persist.
+
 ## How the scraping works
 
 The quiz runs inside an LTI iframe (`insproserv.net`) embedded in Canvas
@@ -127,6 +148,7 @@ index is used for anything that must be; the page's own number is kept as
 ./bump.ps1 -Part minor           # -> 1.4.0
 ./bump.ps1 -Message "fix maths"  # custom commit message
 ./bump.ps1 -NoPush               # commit only
+./bump.ps1 -File cfa-quiz-readable.user.js   # bump the readable-text script instead
 ```
 
 `bump.ps1` runs a Node syntax check **before** committing. A broken script
